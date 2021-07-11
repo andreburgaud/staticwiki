@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Crypt2go</title>
+<!-- Google Fonts -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+
+<!-- CSS Reset -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+
+<!-- Milligram CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+
+<link rel="stylesheet" href="highlight.css">
+
+<link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link  rel="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath/texmath.min.js" defer></script>
+
+</head>
+<body>
+<div class="container">
+<h1>Crypt2go</h1>
+<p><a href="https://godoc.org/github.com/andreburgaud/crypt2go"><img src="https://godoc.org/github.com/andreburgaud/crypt2go?status.svg" alt="GoDoc" /></a>
+<a href="https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg" alt="License" /></a>
+<a href="https://goreportcard.com/report/github.com/andreburgaud/crypt2go"><img src="https://goreportcard.com/badge/github.com/andreburgaud/crypt2go" alt="Go Report Card" /></a></p>
+<p>Some basic Golang packages complementing existing standard library <code>crypto</code> packages and the extension packages <code>x/crypto</code>.</p>
+<h2>Installation</h2>
+<pre><code>$ go get github.com/andreburgaud/crypt2go
+</code></pre>
+<p>or to update to the latest version:</p>
+<pre><code>$ go get -u github.com/andreburgaud/crypt2go
+</code></pre>
+<h2>Development</h2>
+<p>In the <code>crypt2go</code> directory, execute <code>make</code> or <code>make help</code> to display the build commands.</p>
+<h3>Test</h3>
+<pre><code>$ make test
+</code></pre>
+<h3>Run Examples</h3>
+<p>To execute the examples similar to these in the <code>README</code> (this file):</p>
+<pre><code>$ make run
+</code></pre>
+<h2>Disclaimer</h2>
+<p>I’m, by no means, an expert in cryptography and welcome any comments or suggestions to improve the code included in this repository.</p>
+<h2>ECB (Electronic Codebook)</h2>
+<p>The ECB mode of operation should <strong>NOT</strong> be used anymore. This code was written to facilitate migrating legacy data encrypted with ECB.</p>
+<p>There is plenty of literature explaining why ECB should not be used, starting with <a href="https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation">https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation</a>, section <em>Electronic Codebook (ECB)</em>.</p>
+<p>Nevertheless, if like me, someone needed to solve a problem with legacy software and use ECB, this code might be helpful.</p>
+<h2>Examples</h2>
+<h3>Blowfish encryption in ECB mode with padding</h3>
+<pre><code class="language-go"><div class="highlight"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+  <span class="s">&quot;fmt&quot;</span>
+
+  <span class="s">&quot;golang.org/x/crypto/blowfish&quot;</span>
+
+  <span class="s">&quot;github.com/andreburgaud/crypt2go/ecb&quot;</span>
+  <span class="s">&quot;github.com/andreburgaud/crypt2go/padding&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">encrypt</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">key</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[]</span><span class="kt">byte</span> <span class="p">{</span>
+  <span class="nx">block</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">blowfish</span><span class="p">.</span><span class="nx">NewCipher</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">mode</span> <span class="o">:=</span> <span class="nx">ecb</span><span class="p">.</span><span class="nx">NewECBEncrypter</span><span class="p">(</span><span class="nx">block</span><span class="p">)</span>
+  <span class="nx">padder</span> <span class="o">:=</span> <span class="nx">padding</span><span class="p">.</span><span class="nx">NewPkcs5Padding</span><span class="p">()</span>
+  <span class="nx">pt</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">padder</span><span class="p">.</span><span class="nx">Pad</span><span class="p">(</span><span class="nx">pt</span><span class="p">)</span> <span class="c1">// pad last block of plaintext if block size less than block cipher size</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">ct</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">pt</span><span class="p">))</span>
+  <span class="nx">mode</span><span class="p">.</span><span class="nx">CryptBlocks</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">pt</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">ct</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">key</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[]</span><span class="kt">byte</span> <span class="p">{</span>
+  <span class="nx">block</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">blowfish</span><span class="p">.</span><span class="nx">NewCipher</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">mode</span> <span class="o">:=</span> <span class="nx">ecb</span><span class="p">.</span><span class="nx">NewECBDecrypter</span><span class="p">(</span><span class="nx">block</span><span class="p">)</span>
+  <span class="nx">pt</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">ct</span><span class="p">))</span>
+  <span class="nx">mode</span><span class="p">.</span><span class="nx">CryptBlocks</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+  <span class="nx">padder</span> <span class="o">:=</span> <span class="nx">padding</span><span class="p">.</span><span class="nx">NewPkcs5Padding</span><span class="p">()</span>
+  <span class="nx">pt</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">padder</span><span class="p">.</span><span class="nx">Unpad</span><span class="p">(</span><span class="nx">pt</span><span class="p">)</span> <span class="c1">// unpad plaintext after decryption</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">pt</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">example</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">pt</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;Some plain text&quot;</span><span class="p">)</span>
+  <span class="nx">key</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;a_very_secret_key&quot;</span><span class="p">)</span>
+
+  <span class="nx">ct</span> <span class="o">:=</span> <span class="nx">encrypt</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Ciphertext: %x\n&quot;</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+
+  <span class="nx">recoveredPt</span> <span class="o">:=</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Recovered plaintext: %s\n&quot;</span><span class="p">,</span> <span class="nx">recoveredPt</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;Blowfish encryption with ECB and PKCS5 padding&quot;</span><span class="p">)</span>
+  <span class="nx">example</span><span class="p">()</span>
+<span class="p">}</span>
+</div></code></pre>
+<h3>AES Encryption in ECB mode with padding</h3>
+<pre><code class="language-go"><div class="highlight"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+  <span class="s">&quot;fmt&quot;</span>
+
+  <span class="s">&quot;crypto/aes&quot;</span>
+
+  <span class="s">&quot;github.com/andreburgaud/crypt2go/ecb&quot;</span>
+  <span class="s">&quot;github.com/andreburgaud/crypt2go/padding&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nx">encrypt</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">key</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[]</span><span class="kt">byte</span> <span class="p">{</span>
+  <span class="nx">block</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aes</span><span class="p">.</span><span class="nx">NewCipher</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">mode</span> <span class="o">:=</span> <span class="nx">ecb</span><span class="p">.</span><span class="nx">NewECBEncrypter</span><span class="p">(</span><span class="nx">block</span><span class="p">)</span>
+  <span class="nx">padder</span> <span class="o">:=</span> <span class="nx">padding</span><span class="p">.</span><span class="nx">NewPkcs7Padding</span><span class="p">(</span><span class="nx">mode</span><span class="p">.</span><span class="nx">BlockSize</span><span class="p">())</span>
+  <span class="nx">pt</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">padder</span><span class="p">.</span><span class="nx">Pad</span><span class="p">(</span><span class="nx">pt</span><span class="p">)</span> <span class="c1">// padd last block of plaintext if block size less than block cipher size</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">ct</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">pt</span><span class="p">))</span>
+  <span class="nx">mode</span><span class="p">.</span><span class="nx">CryptBlocks</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">pt</span><span class="p">)</span>
+  <span class="k">return</span> <span class="nx">ct</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">key</span> <span class="p">[]</span><span class="kt">byte</span><span class="p">)</span> <span class="p">[]</span><span class="kt">byte</span> <span class="p">{</span>
+  <span class="nx">block</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">aes</span><span class="p">.</span><span class="nx">NewCipher</span><span class="p">(</span><span class="nx">key</span><span class="p">)</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="nx">mode</span> <span class="o">:=</span> <span class="nx">ecb</span><span class="p">.</span><span class="nx">NewECBDecrypter</span><span class="p">(</span><span class="nx">block</span><span class="p">)</span>
+  <span class="nx">pt</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">ct</span><span class="p">))</span>
+  <span class="nx">mode</span><span class="p">.</span><span class="nx">CryptBlocks</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+  <span class="nx">padder</span> <span class="o">:=</span> <span class="nx">padding</span><span class="p">.</span><span class="nx">NewPkcs7Padding</span><span class="p">(</span><span class="nx">mode</span><span class="p">.</span><span class="nx">BlockSize</span><span class="p">())</span>
+  <span class="nx">pt</span><span class="p">,</span> <span class="nx">err</span> <span class="p">=</span> <span class="nx">padder</span><span class="p">.</span><span class="nx">Unpad</span><span class="p">(</span><span class="nx">pt</span><span class="p">)</span> <span class="c1">// unpad plaintext after decryption</span>
+  <span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+    <span class="nb">panic</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">Error</span><span class="p">())</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">pt</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">example</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">pt</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;Some plain text&quot;</span><span class="p">)</span>
+  <span class="c1">// Key size for AES is either: 16 bytes (128 bits), 24 bytes (192 bits) or 32 bytes (256 bits)</span>
+  <span class="nx">key</span> <span class="o">:=</span> <span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&quot;secretkey16bytes&quot;</span><span class="p">)</span>
+
+  <span class="nx">ct</span> <span class="o">:=</span> <span class="nx">encrypt</span><span class="p">(</span><span class="nx">pt</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Ciphertext: %x\n&quot;</span><span class="p">,</span> <span class="nx">ct</span><span class="p">)</span>
+
+  <span class="nx">recoveredPt</span> <span class="o">:=</span> <span class="nx">decrypt</span><span class="p">(</span><span class="nx">ct</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;Recovered plaintext: %s\n&quot;</span><span class="p">,</span> <span class="nx">recoveredPt</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nx">main</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;AES encryption with ECB and PKCS7 padding&quot;</span><span class="p">)</span>
+  <span class="nx">example</span><span class="p">()</span>
+<span class="p">}</span>
+</div></code></pre>
+<h2>Padding</h2>
+<p>Both ECB (Electronic Codebook) and CBC (Cipher Block Chaining) require blocks of fixed size. Encryption with these modes of operation, ECB and CBC, requires to <code>pad</code> the plain text to a size multiple of the block size.</p>
+<p>The <code>padding</code> package exposes simple functions to provide a way to <code>pad</code> and <code>unpad</code> a given plaintext respectively before encryption and after decryption.</p>
+<p>The code examples in the previous sections show encryption patterns with Blowfish and AES in ECB mode. Blowfish encrypts blocks of 8 bytes hence using the padding type described in the <a href="https://tools.ietf.org/html/rfc2898">https://tools.ietf.org/html/rfc2898</a> <em>PKCS #5: Password-Based Cryptography Specification Version 2.0</em>. Whereas AES requires blocks of 16 bytes (128 bits). The padding type in the second example is based on <a href="https://tools.ietf.org/html/rfc2315">https://tools.ietf.org/html/rfc2315</a> <em>PKCS #7: Cryptographic Message Syntax Version 1.5</em>.</p>
+<p>The only difference between the two specs is that PKCS #5 accommodates only for blocks of 8 bytes. The <code>padding</code> package reflects that and exposes two builders, respectively <code>NewPkcs5Padding()</code> that embeds a hard-coded value for a block size of 8, while <code>NewPkcs7Padding(int blockSize)</code> takes a parameter for the block size. Nothing prevents using <code>NewPkcs7Padding</code> with a block size of 8 to work with an encryption scheme working on blocks of 8 bytes, like <em>Blowfish</em>.</p>
+<h3>Full block of padding</h3>
+<p>To ensure that there is no ambiguity for the receiver of a message, padding is always performed, even if the message is of an exact multiple block size. This is intentional and comply with the NIST recommendations, * <a href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf">https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf</a> <strong>Appendix A: Padding</strong>, and the following RFCs:</p>
+<ul>
+<li><a href="https://tools.ietf.org/html/rfc8018">https://tools.ietf.org/html/rfc8018</a></li>
+<li><a href="https://tools.ietf.org/html/rfc1423">https://tools.ietf.org/html/rfc1423</a></li>
+<li><a href="https://tools.ietf.org/html/rfc2898">https://tools.ietf.org/html/rfc2898</a></li>
+<li><a href="https://tools.ietf.org/html/rfc5652">https://tools.ietf.org/html/rfc5652</a></li>
+</ul>
+<p>The padding goes as follows for blocks of 8 bytes (8 octets):</p>
+<p>Given a message <code>M</code>, we obtain an encoded message <code>EM</code> by concatenating <code>M</code> with a padding string <code>PS</code>:</p>
+<pre><code>EM = M || PS
+</code></pre>
+<p>The padding string <code>PS</code> consists of <code>8 - (||M|| mod 8)</code> octets, each with value <code>8 - (||M|| mod 8)</code>. Examples:</p>
+<pre><code>PS = 01, if ||M|| mod 8 = 7
+PS = 02 02, if ||M|| mod 8 = 6
+...
+PS = 08 08 08 08 08 08 08 08, if ||M|| mod 8 = 0 
+</code></pre>
+<p>The last example is important. Yes, it will add a full block of padding, and this is intentional. This removes the ambiguity for the receiver that expects every message to be padded.</p>
+<p>To illustrate what would happen if some messages are not padded, let’s take an example of a message with the last octet with value <code>01</code>. As the receiver of this message, should I remove the padding <code>01</code>? Or, is the last byte <code>01</code>, part of a message that was not padded because it was an exact multiple block size?</p>
+<p>If the receiver knows that every message is padded, even if this results in a message padded with a full block of <code>08</code>, there is no ambiguity.</p>
+<p>Another approach to remove this ambiguity would be to provide a separate indicator that would remove this ambiguity. An example would be to provide a message length indicator.</p>
+<p>The implementation in this package relies on padding every message (see method <code>padding.Pad()</code>).</p>
+<h2>Additional Examples</h2>
+<p>See the unit tests or the example tests in the respective package directories.</p>
+<h2>License</h2>
+<p>The <code>ecb</code> package, is directly modeled after the CBC Golang code (<a href="https://golang.org/src/crypto/cipher/cbc.go">https://golang.org/src/crypto/cipher/cbc.go</a>) released under a BSD license (<a href="https://golang.org/LICENSE">https://golang.org/LICENSE</a>). To avoid any license conflicts, <code>crypt2go</code> is also released under a BSD license.</p>
+<p>See the LICENSE file in the repository.</p>
+
+</div>
+</body>
+</html>

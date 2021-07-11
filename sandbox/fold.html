@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Fold</title>
+<!-- Google Fonts -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+
+<!-- CSS Reset -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+
+<!-- Milligram CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+
+<link rel="stylesheet" href="highlight.css">
+
+<link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link  rel="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath/texmath.min.js" defer></script>
+
+</head>
+<body>
+<div class="container">
+<h1>Fold</h1>
+<p>In Python, common functional constructs are available as built-in functions (e.g. <code>map()</code>, <code>filter()</code>, <code>all()</code>, <code>any()</code>, <code>sum()</code>…). Additional higher-order functions are part of the <code>functools</code> module, like <code>reduce()</code> and <code>partial()</code>. The Python implementation of <strong>fold left</strong> is <code>functools.reduce()</code>. Python does not implement <strong>fold right</strong>. This article highlights a few of the functional theories behind <strong>fold left</strong> and <strong>fold right</strong>, and from this information, derives one way to implement <strong>fold right</strong> in Python.</p>
+<!-- more -->
+<p>This article is a <a href="https://www.python.org/">Python</a> article, but some of the initial code examples are in <a href="https://www.haskell.org/">Haskell</a>. Haskell natively implements both <strong>fold left</strong> and <strong>fold right</strong>. Haskell code, like Python code, reads like pseudo-code and provides executable examples illustrating this article.</p>
+<h1>Fold</h1>
+<p><a href="https://en.wikipedia.org/wiki/Fold_(higher-order_function)">Fold</a> regroups a family of <a href="https://en.wikipedia.org/wiki/Higher-order_function">higher-order functions</a> in <a href="https://en.wikipedia.org/wiki/Functional_programming">functional programming</a>. At a high level, <em>folding</em> allows to deconstruct or reduce data. A typical signature for a generic <strong>fold</strong> function is the following:</p>
+<p>{% katex(block=true) %}\text{fold}\ f\ z\ xs{% end %}</p>
+<section>
+<eqn>
+\text{fold}\ f\ z\ xs
+</eqn>
+</section>
+<section>
+<eqn>
+a=1
+b=2
+</eqn>
+</section>
+<p><sup class="footnote-ref"><a href="#fn1" id="fnref1">[1]</a></sup></p>
+<p>Where:</p>
+<ul>
+<li><code>f</code> is a higher-order function taking two arguments, an accumulator and an element of the list <code>xs</code>. It is applied recursively to each element of <code>xs</code>.</li>
+<li><code>z</code> is the initial value of the accumulator and an argument of the function <code>f</code>.</li>
+<li><code>xs</code> is a collection.</li>
+</ul>
+<p>At a high level, we can picture <em>fold</em> as a function that:</p>
+<ol>
+<li>Iterates over the collection <code>xs</code></li>
+<li>Applies <code>f</code> to the accumulator <code>z</code> and a first element of <code>xs</code> while returning a new value for <code>z</code></li>
+<li>Continues to apply function <code>f</code> to the new value of <code>z</code> for each element of <code>xs</code></li>
+<li>Returns the final value of <code>z</code> after operating on each element of <code>xs</code></li>
+</ol>
+<p>As an example, if we wanted to implement a function <code>total()</code> that adds all the elements of a list of integers, we would have:</p>
+<ul>
+<li><code>total(f, z, xs)</code> where:
+<ul>
+<li><code>f</code> is the <strong>addition</strong> operator <code>(+)</code></li>
+<li><code>z</code> is an initial value for the accumulator, <code>0</code></li>
+<li><code>xs</code> is a list of integers, e.g. <code>[1, 2, 3]</code></li>
+</ul>
+</li>
+</ul>
+<p>We can then invoke <code>total()</code>, as follows (pseudocode):</p>
+<pre><code>total((+), 0, [1, 2, 3])
+</code></pre>
+<p>The nested operations and the result would be:</p>
+<pre><code>((0 + 1) + 2) + 3 = 6
+</code></pre>
+<p>Fold functions come in different kinds, the two main linear ones are <code>foldl</code> and <code>foldr</code>.</p>
+<h2>foldl</h2>
+<p><code>foldl</code>, for <strong>fold left</strong>, is left associative. Think of <code>foldl</code> as <em>fold from the left</em> (image courtesy of Wikipedia):</p>
+<div style="text-align: center">
+<img alt="Left fold transformation" src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Left-fold-transformation.png" />
+</div>
+<p>{% katex(block=true) %}\text{foldl}\ f\ z\ xs{% end %}</p>
+<p>The <strong>fold left</strong> function performs the operations on the elements of the list <code>xs</code>, starting from the left. If we substitute <code>f</code> with <strong>addition</strong> <code>(+)</code>, <code>z</code> with value <code>0</code>, and <code>xs</code> with <code>[1,2,3]</code>, the step-by-step operations execute as follows:</p>
+<p>{% katex(block=true) %}
+\begin{split}
+&amp;\text{foldl}\ (+)\ 0\ [1, 2, 3] \
+&amp;\implies \text{foldl}\ (+)\ 1\ [2, 3] \
+&amp;\implies \text{foldl}\ (+)\ 3\ [ 3 ] \
+&amp;\implies \text{foldl}\ (+)\ 6\ [] \
+&amp;\implies 6
+\end{split}
+{% end %}</p>
+<section>
+<eqn>
+\begin{split}
+&\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
+&\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
+&\implies \text{foldl}\ (+)\ 3\ [ 3 ] \\
+&\implies \text{foldl}\ (+)\ 6\ [] \\
+&\implies 6
+\end{split}
+</eqn>
+</section>
+<p>The intermediary steps can be reduced into the following one-liner:</p>
+<p>{% katex(block=true) %}\text{foldl}\ (+)\ 0\ [1, 2, 3] = ((0 + 1) + 2) + 3{% end %}</p>
+<p>We can use the <a href="https://tryhaskell.org/">online REPL</a> to execute this Haskell code:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="p">(((</span><span class="mi">0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
+<span class="mi">6</span>
+</div></code></pre>
+<p>The operations start from the left by adding the initial accumulator <code>0</code> to the first element of the list <code>1</code>. The second operation adds the new accumulator <code>1</code> to the next element in the list <code>2</code>, and so forth until we reach the final result <code>6</code>.</p>
+<p>We can verify the result of invoking <code>foldl</code>:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">6</span>
+</div></code></pre>
+<p>The expression executes <code>foldl</code> with the addition <code>(+)</code> as a function, an accumulator set to <code>0</code> and the list <code>[1, 2, 3]</code>. The result is <code>6</code>.</p>
+<h2>foldr</h2>
+<p><code>foldr</code>, for <strong>fold right</strong>, is right associative. Think of <code>foldr</code> as <em>fold from the right</em> (image courtesy of Wikipedia):</p>
+<div style="text-align: center">
+<img alt="Right fold transformation" src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Right-fold-transformation.png" />
+</div>
+<p>{% katex(block=true) %}\text{foldr}\ f\ z\ xs{% end %}</p>
+<p>The <strong>fold right</strong> function performs the operations on the elements of the list<code>xs</code>, starting from the right. Similarly to what we did for <code>foldl</code>, substitute <code>f</code> with <code>(+)</code>, <code>z</code> with <code>0</code>, and <code>xs</code> with <code>[1,2,3]</code>. Observe how the addition concretely applies first to the element on the end of the list:</p>
+<p>{% katex(block=true) %}
+\begin{split}
+&amp;\text{foldr}\ (+)\ 0\ [1, 2, 3] \
+&amp;\implies 1 + (\text{foldr}\ (+)\ 0\ [2, 3]) \
+&amp;\implies 1 + (2 + (\text{foldr}\ (+)\ 0\ [ 3 ])) \
+&amp;\implies 1 + (2 + (3 + (\text{foldr}\ (+)\ 0\ []))) \
+&amp;\implies 1 + (2 + (3 + 0)) \
+&amp;\implies 1 + (2 + 3) \
+&amp;\implies 1 + 5 \
+&amp;\implies 6
+\end{split}
+{% end %}</p>
+<p>The steps above can be represented as follows:</p>
+<p>{% katex(block=true) %}\text{foldr}\ (+)\ 0\ [1, 2, 3] = 1\ + (2\ + (3\ + 0)){% end %}</p>
+<p>We can execute the same expression in the Haskell REPL:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">0</span><span class="p">))</span>
+<span class="mi">6</span>
+</div></code></pre>
+<p>The following expression is the same operation using the Haskell <code>foldr</code> function:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">6</span>
+</div></code></pre>
+<p>The two expressions above are illustrating respectively the manual implementation mimicking the <code>foldr</code> order of execution and the invocation of the Haskell <code>foldr</code> function.</p>
+<p>Because <strong>addition</strong> is <a href="https://en.wikipedia.org/wiki/Associative_property">associative</a>, rearranging the parentheses does not alter the result of the expression: <code>1 + (2 + (3 + 0))</code> and <code>(((0 + 1) + 2) + 3)</code> are equivalent expressions and evaluate to the same result, <code>6</code>. For this reason both <code>foldl</code> and <code>foldr</code> with the same arguments return the same result if <code>f</code> is <strong>addition</strong>. Non-associative functions, like <strong>subtraction</strong> or <strong>division</strong>, would return different results when using <code>foldl</code> and <code>foldr</code> with the same arguments. For example with <strong>subtraction</strong>, we would observe the following:</p>
+<pre><code class="language-haskell"><div class="highlight"><span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">10</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">4</span>
+<span class="o">&gt;</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">10</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="o">-</span><span class="mi">8</span>
+</div></code></pre>
+<p>Note that both <code>foldl</code> and <code>foldr</code> take the same arguments, the <strong>subtraction</strong> function <code>(-)</code>, the accumulator <code>10</code>, and the list <code>[1,2,3]</code>. We can translate the <code>foldl</code> execution as the following parenthesized subtractions:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="p">(((</span><span class="mi">10</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="mi">3</span><span class="p">)</span>
+<span class="mi">4</span>
+</div></code></pre>
+<p>The <code>foldr</code> executes the <strong>subtraction</strong> function to each element of the list from the right-hand side:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span>  <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">2</span> <span class="o">-</span> <span class="p">(</span><span class="mi">3</span> <span class="o">-</span> <span class="mi">10</span><span class="p">))</span>
+<span class="o">-</span><span class="mi">8</span>
+</div></code></pre>
+<h1>Laws of fold</h1>
+<p>In the book <a href="https://www.amazon.com/dp/0134843460/">Introduction to Functional Programming using Haskell</a>, the authors <a href="https://www.cs.ox.ac.uk/richard.bird/">Richard Bird</a> and <a href="https://homepages.inf.ed.ac.uk/wadler/">Philip Wadler</a> wrote a section on the <strong>Laws of fold</strong>. The first three laws are called <strong>duality theorems</strong> and concern the relationship between <code>foldl</code> and <code>foldr</code>. For simplification and in the context of this article, let’s focus on the first and third duality theorems.</p>
+<h2>First duality theorem</h2>
+<p>The first duality theorem states that, for all finite lists <code>xs</code>, if <code>f</code> is <a href="https://en.wikipedia.org/wiki/Associative_property">associative</a> and has identity element <code>e</code>, then:</p>
+<p>{% katex(block=true) %}\text{foldr}\ f\ e\ xs\ =\ \textrm{foldl}\ f\ e\ xs{% end %}</p>
+<p>We have already observed the following example using the <strong>addition</strong> as operation and the accumulator <code>z</code> set to <code>0</code>. Note that <code>0</code> is the <a href="https://en.wikipedia.org/wiki/Identity_element">identity element</a> for <strong>addition</strong> on the set of <a href="https://en.wikipedia.org/wiki/Real_number">Real numbers</a>. We can validate this theory by invoking <code>foldl</code> and <code>foldr</code> with <strong>addition</strong> and the same collection <code>[1,2,3]</code>:</p>
+<pre><code class="language-haskell"><div class="highlight"><span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">6</span>
+<span class="o">&gt;</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">6</span>
+<span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">+</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="kt">True</span>
+</div></code></pre>
+<p>What would be the impact if <code>z</code> is not associative? The <strong>third duality theorem</strong> may have an answer.</p>
+<h2>Third duality theorem</h2>
+<p>The <strong>third duality theorem</strong> for <strong>fold</strong> states that, for all finite lists <code>xs</code>:</p>
+<p>{% katex(block=true) %}\text{foldr}\ f\ e\ xs\ =\ \text{foldl}\ (\text{flip}\ f)\ e\ (\text{reverse}\ xs){% end %}</p>
+<p>where:</p>
+<p>{% katex(block=true) %}\text{flip}\ f\ x\ y = f\ y\ x{% end %}</p>
+<p>Let’s use again <strong>subtraction</strong> that is not associative to validate the relationship between <code>foldl()</code> and <code>foldr()</code>:</p>
+<pre><code class="language-haskell"><div class="highlight"><span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="o">-</span><span class="mi">6</span>
+<span class="o">&gt;</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span>
+<span class="mi">2</span>
+<span class="o">&gt;</span> <span class="n">foldl</span> <span class="p">(</span><span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="p">))</span> <span class="mi">0</span> <span class="p">(</span><span class="n">reverse</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="o">&gt;</span> <span class="n">foldr</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">0</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">==</span> <span class="n">foldl</span> <span class="p">(</span><span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="p">))</span> <span class="mi">0</span> <span class="p">(</span><span class="n">reverse</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="kt">True</span>
+</div></code></pre>
+<p>Despite that <strong>subtraction</strong> is not associative, when we apply <a href="https://zvon.org/other/haskell/Outputprelude/flip_f.html">flip()</a> to the function <code>(-)</code> and reverse the order of the argument list <code>xs</code>, when we invoke <code>foldl()</code>, we obtain the same result as invoking <code>foldr()</code> on the same arguments.</p>
+<p>Note that <code>flip()</code> evaluates the function by flipping the order of the arguments. For example, in Haskell, <code>(-) 2 1</code> is equivalent to <code>2 - 1</code>, whereas <code>flip(-) 2 1</code> is the same as <code>1 - 2</code>. We can validate these operations in the online Haskell REPL:</p>
+<pre><code class="language-hs"><div class="highlight"><span class="o">&gt;</span> <span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">2</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+<span class="kt">True</span>
+<span class="o">&gt;</span> <span class="n">flip</span><span class="p">(</span><span class="o">-</span><span class="p">)</span> <span class="mi">2</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span>
+<span class="kt">True</span>
+</div></code></pre>
+<p>These two theorems should help crafting a <code>foldr</code> function in Python.</p>
+<h1>Fold in Python</h1>
+<p>Despite some past <a href="https://www.artima.com/weblogs/viewpost.jsp?thread=98196">resistance</a> from <a href="https://en.wikipedia.org/wiki/Guido_van_Rossum">Guido van Rossum</a>, Python 3 still has a <em>Fold</em> function. We can find it in the <code>functools</code> module, and it is named <a href="https://docs.python.org/3/library/functools.html#functools.reduce">reduce()</a>. The function <code>functools.reduce()</code> is implemented as a <strong>fold left</strong>.</p>
+<h2>foldl in Python</h2>
+<p>The signature of <code>functools.reduce()</code> is <code>reduce(function, sequence[, initial]) -&gt; value</code>. The parameter <code>initial</code> is optional and corresponds to the accumulator <code>z</code> of the Haskell <code>foldl()</code> and detailed in the previous section.</p>
+<p>As an exercise and to mimic Haskell, a <code>foldl</code> function can be written in Python as follows, with a <em>lambda</em>:</p>
+<pre><code class="language-python"><div class="highlight"><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">functools</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">operator</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldl</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">acc</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldl</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="o">-</span><span class="mi">6</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldl</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;1&#39;</span><span class="p">,</span><span class="s1">&#39;2&#39;</span><span class="p">,</span><span class="s1">&#39;3&#39;</span><span class="p">])</span>
+<span class="s1">&#39;L123&#39;</span>
+</div></code></pre>
+<p>Note that subtraction and addition are supplied to <code>foldl()</code> with respectively <a href="https://docs.python.org/3/library/operator.html#operator.sub">operator.sub</a> and <a href="https://docs.python.org/3/library/operator.html#operator.add">operator.add</a>. Another option would be to use lambda functions. For example instead of using <code>operator.add</code> we could use <code>lambda x, y: x + y</code>.</p>
+<p>A more formal approach is to implement <code>foldl</code> as a function:</p>
+<pre><code class="language-python"><div class="highlight"><span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+
+<span class="k">def</span> <span class="nf">foldl</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">acc</span><span class="p">)</span>
+
+<span class="c1"># tests</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">foldl</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]))</span> <span class="c1"># -6</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">foldl</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="s1">&#39;L&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;1&#39;</span><span class="p">,</span><span class="s1">&#39;2&#39;</span><span class="p">,</span><span class="s1">&#39;3&#39;</span><span class="p">]))</span> <span class="c1"># &#39;L123&#39;</span>
+</div></code></pre>
+<p>So far we have only wrapped <code>functools.reduce</code> to look like a <code>foldl</code>. Let’s see how it could work with <code>foldr</code>.</p>
+<h2>foldr in Python</h2>
+<p>Relying on the <strong>third duality theorem</strong> described in the <a href="/foldl-foldr-python/#third-duality-theorem">Laws of fold</a>, <code>foldr</code> can be crafted as a <em>lambda</em>:</p>
+<pre><code class="language-python"><div class="highlight"><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">functools</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">operator</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldr</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">xs</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">acc</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldr</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="mi">2</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">foldr</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="s1">&#39;2&#39;</span><span class="p">,</span> <span class="s1">&#39;3&#39;</span><span class="p">])</span>
+<span class="s1">&#39;123R&#39;</span>
+</div></code></pre>
+<p>By applying the two rules of the <strong>third duality theorem</strong>, we respectively:</p>
+<ol>
+<li><strong>Flipped</strong> the arguments of <code>f</code>: <code>lambda x, y: func(y, x)</code></li>
+<li><strong>Reversed</strong> the order of <code>zs</code>: <code>xs[::-1]</code></li>
+</ol>
+<p><strong>Notes</strong>: <code>xs[::-1]</code> is the Python idiomatic way to return the reverse of a list. Check this <a href="https://stackoverflow.com/a/3705676">answer from Alex Martelli on stackoverlow</a>. The other option, more readable, is to use the built-in <a href="https://docs.python.org/3.5/library/functions.html#reversed">reversed</a> function. In Python 2, <code>reduce()</code> was a built-in function.</p>
+<p>Lambdas implemented as above are not generally conducive to good code readability. The following code, although longer, might be more maintainable:</p>
+<pre><code class="language-python"><div class="highlight"><span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+
+<span class="k">def</span> <span class="nf">flip</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">newfunc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">newfunc</span>
+
+<span class="k">def</span> <span class="nf">foldr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">flip</span><span class="p">(</span><span class="n">func</span><span class="p">),</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">acc</span><span class="p">)</span>
+
+<span class="c1"># test</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">foldr</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">sub</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]))</span> <span class="c1"># 2</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">foldr</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="s1">&#39;R&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;1&#39;</span><span class="p">,</span><span class="s1">&#39;2&#39;</span><span class="p">,</span><span class="s1">&#39;3&#39;</span><span class="p">]))</span> <span class="c1"># &#39;123R&#39;</span>
+</div></code></pre>
+<p>To flip the arguments of <code>func</code>, we use the <code>flip()</code> function with a nested function <code>newfunc()</code> that returns a function flipping the arguments such that <code>x</code> becomes <code>y</code> and <code>y</code> is <code>x</code>.</p>
+<p><strong>Note</strong>: the <code>flip</code> function above is inspired from <a href="https://stackoverflow.com/a/9850282">Raymond Hettinger in a StackOverflow answer</a></p>
+<p>We now have new toy functions in Python, <code>foldl</code> and <code>foldr</code>.  What can we do with those?</p>
+<h1>The Power of Reduce (foldl)</h1>
+<p>The folding concept opens the doors to build many other functions. It can be done without having to write explicit recursive code or managing loops. For example, <code>max</code>, <code>min</code>, <code>sum</code>, <code>prod</code>, <code>any</code>, <code>all</code>, <code>map</code>, <code>filter</code> among others, can all be expressed using <code>fold</code>.</p>
+<p>Here are some examples, using lambdas for conciseness:</p>
+<pre><code class="language-python"><div class="highlight"><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">functools</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">operator</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmax</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">y</span> <span class="k">else</span> <span class="n">y</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmax</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="mi">5</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmin</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">y</span> <span class="k">else</span> <span class="n">y</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmin</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lsum</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lsum</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="mi">15</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lprod</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">mul</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lprod</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="mi">120</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lany</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">or</span> <span class="nb">bool</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">xs</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lany</span><span class="p">([[],</span> <span class="p">[],</span> <span class="p">[]])</span>
+<span class="kc">False</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lany</span><span class="p">([</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;guido&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">])</span>
+<span class="kc">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lall</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">y</span><span class="p">),</span> <span class="n">xs</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lall</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">])</span>
+<span class="kc">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lall</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="kc">False</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmap</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">func</span><span class="p">,</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="p">[</span><span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">)],</span> <span class="n">xs</span><span class="p">,</span> <span class="p">[])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lmap</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">]</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lfilter</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">func</span><span class="p">,</span> <span class="n">xs</span><span class="p">:</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="k">if</span> <span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="k">else</span> <span class="n">x</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="p">[])</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">lfilter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">]</span>
+</div></code></pre>
+<p>All the examples have existing and more powerful implementations in Python. They are all <a href="https://docs.python.org/3/library/functions.html">built-in functions</a>, except for <a href="https://docs.python.org/3/library/math.html#math.prod">math.prod()</a> in  the <code>math</code> module since Python 3.8. All of the functions above are relying on <code>reduce</code> (<code>foldl</code>) and none are taking advantage of <code>foldr</code>.</p>
+<h1>More Examples with foldr and foldl</h1>
+<pre><code class="language-lisp"><div class="highlight"><span class="nb">&gt;</span> <span class="p">(</span><span class="nv">foldr</span> <span class="nb">cons</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">))</span>
+<span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">&gt;</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;1</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;2</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;3</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">4</span><span class="p">))))</span>
+<span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">&gt;</span> <span class="p">(</span><span class="nv">foldl</span> <span class="nb">cons</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">))</span>
+<span class="o">&#39;</span><span class="p">(</span><span class="mi">3</span> <span class="mi">2</span> <span class="mi">1</span> <span class="mi">4</span><span class="p">)</span>
+
+<span class="nb">&gt;</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;3</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;2</span> <span class="p">(</span><span class="nb">cons</span> <span class="ss">&#39;1</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">4</span><span class="p">))))</span>
+<span class="o">&#39;</span><span class="p">(</span><span class="mi">3</span> <span class="mi">2</span> <span class="mi">1</span> <span class="mi">4</span><span class="p">)</span>
+</div></code></pre>
+<h1>Example with Foldr</h1>
+<p>Here is a  scenario that demonstrates a possible usage of <code>foldl</code> and <code>foldr</code> in Python. Peter Drake presents this construct in his <a href="https://youtu.be/1IjBT9TSTyQ">Lambdas and folds Youtube video</a>. Imagine that, given a list, we need to identify the last and/or the first element that satisfies a certain predicate. This could be written as follows:</p>
+<pre><code class="language-python"><div class="highlight"><span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="k">def</span> <span class="nf">foldl</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+  <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">acc</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">flip</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">newfunc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">newfunc</span>
+
+<span class="k">def</span> <span class="nf">foldr</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">flip</span><span class="p">(</span><span class="n">func</span><span class="p">),</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">xs</span><span class="p">),</span> <span class="n">acc</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">first</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">foldr</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">func</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">else</span> <span class="n">y</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">last</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">foldl</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">y</span> <span class="k">if</span> <span class="n">func</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="k">else</span> <span class="n">x</span><span class="p">,</span> <span class="n">acc</span><span class="p">,</span> <span class="n">xs</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">last</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">&lt;</span><span class="mi">8</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]))</span>   <span class="c1"># =&gt; 7</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">first</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">&gt;</span><span class="mi">3</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]))</span>  <span class="c1"># =&gt; 4</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">first</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">&gt;</span><span class="mi">20</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]))</span> <span class="c1"># =&gt; None</span>
+</div></code></pre>
+<p><code>first</code> and <code>last</code> don’t require any loop or explicit recursion. <code>first</code> uses <code>foldr</code> taking advantage of the <em>right folding</em> whereas <code>last</code> relies on <code>foldl</code>.</p>
+<h2>How does first work?</h2>
+<pre><code class="language-python"><div class="highlight"><span class="n">predicate</span> <span class="p">(</span><span class="n">example</span><span class="p">:</span> <span class="n">element</span> <span class="n">less</span> <span class="n">than</span> <span class="mi">8</span><span class="p">)</span>
+
+<span class="n">z</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]</span>
+<span class="n">foldl</span><span class="p">:</span>
+<span class="o">*</span> <span class="n">f</span> <span class="o">=</span>  <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">&lt;</span><span class="mi">8</span>
+<span class="o">*</span> <span class="n">z</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="o">*</span> <span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]</span>
+
+<span class="n">first</span> <span class="n">element</span> <span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="mi">1</span><span class="p">)</span>
+<span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">8</span> <span class="ow">or</span> <span class="n">z</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">second</span> <span class="n">element</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">...</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">7</span>
+</div></code></pre>
+<h2>How does last work?</h2>
+<pre><code class="language-python"><div class="highlight"><span class="n">predicate</span> <span class="p">(</span><span class="n">example</span><span class="p">:</span> <span class="n">element</span> <span class="n">greater</span> <span class="n">than</span> <span class="mi">8</span><span class="p">)</span>
+
+<span class="n">z</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]</span>
+<span class="n">foldf</span><span class="p">:</span>
+<span class="o">*</span> <span class="n">f</span> <span class="o">=</span>  <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">&gt;</span><span class="mi">8</span>
+<span class="o">*</span> <span class="n">z</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="o">*</span> <span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]</span>
+
+<span class="n">first</span> <span class="n">element</span> <span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="mi">1</span><span class="p">)</span>
+<span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="mi">8</span> <span class="ow">or</span> <span class="n">z</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">second</span> <span class="n">element</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">...</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">7</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mi">9</span>
+<span class="n">now</span> <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">=</span> <span class="mi">7</span>
+</div></code></pre>
+<h1>Conclusion</h1>
+<p>In this era of the rediscovery of functional programming, there is much more to explore and to apply to languages that are not inherently functional. Arguably, from a pragmatic perspective, there may be little we need that is not already provided in the current versions of Python and that would require some sophisticated folding mechanisms. Furthermore, other higher-order functions flagships along with <code>fold</code>, like <code>map</code> and <code>filter</code>, can be expressed in Python with elegant <em>list comprehensions</em> and <em>generator expressions</em>, but this should be the subject of a different article.</p>
+<h1>Updates</h1>
+<ul>
+<li>
+<p><strong>03/12/2021</strong>:</p>
+<ul>
+<li>Removed Python 2 references</li>
+</ul>
+</li>
+<li>
+<p><strong>08/28/2016</strong></p>
+<ul>
+<li>Initial publication of this article.</li>
+</ul>
+</li>
+</ul>
+<hr class="footnotes-sep" />
+<section class="footnotes">
+<ol class="footnotes-list">
+<li id="fn1" class="footnote-item"><p>THIS SUCKS. <a href="#fnref1" class="footnote-backref">↩︎</a></p>
+</li>
+</ol>
+</section>
+
+</div>
+</body>
+</html>
