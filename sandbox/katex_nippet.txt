@@ -1,0 +1,7 @@
+\begin{split}
+&\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
+&\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
+&\implies \text{foldl}\ (+)\ 3\ [ 3 ] \\
+&\implies \text{foldl}\ (+)\ 6\ [] \\
+&\implies 6
+\end{split}

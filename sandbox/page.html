@@ -13,10 +13,31 @@
 
 <link rel="stylesheet" href="highlight.css">
 
+<!-- Katex -->
 <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
-<link  rel="https://cdn.jsdelivr.net/npm/markdown-it-texmath/css/texmath.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/markdown-it-texmath/texmath.min.js" defer></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js" integrity="sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          // customised options
+          // • auto-render specific keys, e.g.:
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: "\\(", right: "\\)", display: false},
+              {left: "\\begin{equation}", right: "\\end{equation}", display: true},
+              {left: "\\begin{align}", right: "\\end{align}", display: true},
+              {left: "\\begin{alignat}", right: "\\end{alignat}", display: true},
+              {left: "\\begin{gather}", right: "\\end{gather}", display: true},
+              {left: "\\begin{CD}", right: "\\end{CD}", display: true},
+              {left: "\\[", right: "\\]", display: true}
+          ],
+          // • rendering keys, e.g.:
+          throwOnError : false
+        });
+    });
+</script>
 
 </head>
 <body>

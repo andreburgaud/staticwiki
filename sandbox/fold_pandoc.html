@@ -1,0 +1,333 @@
+<p>In Python, common functional constructs are available as built-in functions (e.g. <code>map()</code>, <code>filter()</code>, <code>all()</code>, <code>any()</code>, <code>sum()</code>…). Additional higher-order functions are part of the <code>functools</code> module, like <code>reduce()</code> and <code>partial()</code>. The Python implementation of <strong>fold left</strong> is <code>functools.reduce()</code>. Python does not implement <strong>fold right</strong>. This article highlights a few of the functional theories behind <strong>fold left</strong> and <strong>fold right</strong>, and from this information, derives one way to implement <strong>fold right</strong> in Python.</p>
+<!-- more -->
+<p>This article is a <a href="https://www.python.org/">Python</a> article, but some of the initial code examples are in <a href="https://www.haskell.org/">Haskell</a>. Haskell natively implements both <strong>fold left</strong> and <strong>fold right</strong>. Haskell code, like Python code, reads like pseudo-code and provides executable examples illustrating this article.</p>
+<h1 id="fold">Fold</h1>
+<p><a href="https://en.wikipedia.org/wiki/Fold_(higher-order_function)">Fold</a> regroups a family of <a href="https://en.wikipedia.org/wiki/Higher-order_function">higher-order functions</a> in <a href="https://en.wikipedia.org/wiki/Functional_programming">functional programming</a>. At a high level, <em>folding</em> allows to deconstruct or reduce data. A typical signature for a generic <strong>fold</strong> function is the following <span class="math inline"><em>a</em> = <em>b</em> = <em>c</em></span> :</p>
+<div>
+<p><span class="math display">fold <em>f</em> <em>z</em> <em>x</em><em>s</em></span></p>
+</div>
+<p>Really!!</p>
+<div>
+<p><span class="math display">$$
+a=1 \\
+b=2
+$$</span></p>
+</div>
+<p><a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>Where:</p>
+<ul>
+<li><code>f</code> is a higher-order function taking two arguments, an accumulator and an element of the list <code>xs</code>. It is applied recursively to each element of <code>xs</code>.</li>
+<li><code>z</code> is the initial value of the accumulator and an argument of the function <code>f</code>.</li>
+<li><code>xs</code> is a collection.</li>
+</ul>
+<p>At a high level, we can picture <em>fold</em> as a function that:</p>
+<ol type="1">
+<li>Iterates over the collection <code>xs</code></li>
+<li>Applies <code>f</code> to the accumulator <code>z</code> and a first element of <code>xs</code> while returning a new value for <code>z</code></li>
+<li>Continues to apply function <code>f</code> to the new value of <code>z</code> for each element of <code>xs</code></li>
+<li>Returns the final value of <code>z</code> after operating on each element of <code>xs</code></li>
+</ol>
+<p>As an example, if we wanted to implement a function <code>total()</code> that adds all the elements of a list of integers, we would have:</p>
+<ul>
+<li><code>total(f, z, xs)</code> where:
+<ul>
+<li><code>f</code> is the <strong>addition</strong> operator <code>(+)</code></li>
+<li><code>z</code> is an initial value for the accumulator, <code>0</code></li>
+<li><code>xs</code> is a list of integers, e.g. <code>[1, 2, 3]</code></li>
+</ul></li>
+</ul>
+<p>We can then invoke <code>total()</code>, as follows (pseudocode):</p>
+<pre><code>total((+), 0, [1, 2, 3])</code></pre>
+<p>The nested operations and the result would be:</p>
+<pre><code>((0 + 1) + 2) + 3 = 6</code></pre>
+<p>Fold functions come in different kinds, the two main linear ones are <code>foldl</code> and <code>foldr</code>.</p>
+<h2 id="foldl">foldl</h2>
+<p><code>foldl</code>, for <strong>fold left</strong>, is left associative. Think of <code>foldl</code> as <em>fold from the left</em> (image courtesy of Wikipedia):</p>
+<div style="text-align: center">
+<p><img alt="Left fold transformation" src="https://upload.wikimedia.org/wikipedia/commons/5/5a/Left-fold-transformation.png" /></p>
+</div>
+<p>{% katex(block=true) %} f z xs{% end %}</p>
+<p>The <strong>fold left</strong> function performs the operations on the elements of the list <code>xs</code>, starting from the left. If we substitute <code>f</code> with <strong>addition</strong> <code>(+)</code>, <code>z</code> with value <code>0</code>, and <code>xs</code> with <code>[1,2,3]</code>, the step-by-step operations execute as follows:</p>
+<p><span class="math display">$$
+\begin{split}
+&amp;\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 3\ [ 3 ] \\
+&amp;\implies \text{foldl}\ (+)\ 6\ [] \\
+&amp;\implies 6
+\end{split}
+$$</span></p>
+<p><span class="math display">$$
+\begin{split}
+&amp;\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 3\ [ 3 ] \\
+&amp;\implies \text{foldl}\ (+)\ 6\ [] \\
+&amp;\implies 6
+\end{split}
+$$</span></p>
+<p>The intermediary steps can be reduced into the following one-liner:</p>
+<p>{% katex(block=true) %} (+) 0 [1, 2, 3] = ((0 + 1) + 2) + 3{% end %}</p>
+<p>We can use the <a href="https://tryhaskell.org/">online REPL</a> to execute this Haskell code:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (((<span class="dv">0</span> <span class="op">+</span> <span class="dv">1</span>) <span class="op">+</span> <span class="dv">2</span>) <span class="op">+</span> <span class="dv">3</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span></code></pre></div>
+<p>The operations start from the left by adding the initial accumulator <code>0</code> to the first element of the list <code>1</code>. The second operation adds the new accumulator <code>1</code> to the next element in the list <code>2</code>, and so forth until we reach the final result <code>6</code>.</p>
+<p>We can verify the result of invoking <code>foldl</code>:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span></code></pre></div>
+<p>The expression executes <code>foldl</code> with the addition <code>(+)</code> as a function, an accumulator set to <code>0</code> and the list <code>[1, 2, 3]</code>. The result is <code>6</code>.</p>
+<h2 id="foldr">foldr</h2>
+<p><code>foldr</code>, for <strong>fold right</strong>, is right associative. Think of <code>foldr</code> as <em>fold from the right</em> (image courtesy of Wikipedia):</p>
+<div style="text-align: center">
+<p><img alt="Right fold transformation" src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Right-fold-transformation.png" /></p>
+</div>
+<p>{% katex(block=true) %} f z xs{% end %}</p>
+<p>The <strong>fold right</strong> function performs the operations on the elements of the list<code>xs</code>, starting from the right. Similarly to what we did for <code>foldl</code>, substitute <code>f</code> with <code>(+)</code>, <code>z</code> with <code>0</code>, and <code>xs</code> with <code>[1,2,3]</code>. Observe how the addition concretely applies first to the element on the end of the list:</p>
+{% katex(block=true) %}
+<p>{% end %}</p>
+<p>The steps above can be represented as follows:</p>
+<p>{% katex(block=true) %} (+) 0 [1, 2, 3] = 1 + (2 + (3 + 0)){% end %}</p>
+<p>We can execute the same expression in the Haskell REPL:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="dv">1</span> <span class="op">+</span> (<span class="dv">2</span> <span class="op">+</span> (<span class="dv">3</span> <span class="op">+</span> <span class="dv">0</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span></code></pre></div>
+<p>The following expression is the same operation using the Haskell <code>foldr</code> function:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldr</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span></code></pre></div>
+<p>The two expressions above are illustrating respectively the manual implementation mimicking the <code>foldr</code> order of execution and the invocation of the Haskell <code>foldr</code> function.</p>
+<p>Because <strong>addition</strong> is <a href="https://en.wikipedia.org/wiki/Associative_property">associative</a>, rearranging the parentheses does not alter the result of the expression: <code>1 + (2 + (3 + 0))</code> and <code>(((0 + 1) + 2) + 3)</code> are equivalent expressions and evaluate to the same result, <code>6</code>. For this reason both <code>foldl</code> and <code>foldr</code> with the same arguments return the same result if <code>f</code> is <strong>addition</strong>. Non-associative functions, like <strong>subtraction</strong> or <strong>division</strong>, would return different results when using <code>foldl</code> and <code>foldr</code> with the same arguments. For example with <strong>subtraction</strong>, we would observe the following:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="op">-</span>) <span class="dv">10</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dv">4</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldr</span> (<span class="op">-</span>) <span class="dv">10</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="dv">8</span></span></code></pre></div>
+<p>Note that both <code>foldl</code> and <code>foldr</code> take the same arguments, the <strong>subtraction</strong> function <code>(-)</code>, the accumulator <code>10</code>, and the list <code>[1,2,3]</code>. We can translate the <code>foldl</code> execution as the following parenthesized subtractions:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (((<span class="dv">10</span> <span class="op">-</span> <span class="dv">1</span>) <span class="op">-</span> <span class="dv">2</span>) <span class="op">-</span> <span class="dv">3</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="dv">4</span></span></code></pre></div>
+<p>The <code>foldr</code> executes the <strong>subtraction</strong> function to each element of the list from the right-hand side:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span>  <span class="dv">1</span> <span class="op">-</span> (<span class="dv">2</span> <span class="op">-</span> (<span class="dv">3</span> <span class="op">-</span> <span class="dv">10</span>))</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="dv">8</span></span></code></pre></div>
+<h1 id="laws-of-fold">Laws of fold</h1>
+<p>In the book <a href="https://www.amazon.com/dp/0134843460/">Introduction to Functional Programming using Haskell</a>, the authors <a href="https://www.cs.ox.ac.uk/richard.bird/">Richard Bird</a> and <a href="https://homepages.inf.ed.ac.uk/wadler/">Philip Wadler</a> wrote a section on the <strong>Laws of fold</strong>. The first three laws are called <strong>duality theorems</strong> and concern the relationship between <code>foldl</code> and <code>foldr</code>. For simplification and in the context of this article, let’s focus on the first and third duality theorems.</p>
+<h2 id="first-duality-theorem">First duality theorem</h2>
+<p>The first duality theorem states that, for all finite lists <code>xs</code>, if <code>f</code> is <a href="https://en.wikipedia.org/wiki/Associative_property">associative</a> and has identity element <code>e</code>, then:</p>
+<p>{% katex(block=true) %} f e xs =  f e xs{% end %}</p>
+<p>We have already observed the following example using the <strong>addition</strong> as operation and the accumulator <code>z</code> set to <code>0</code>. Note that <code>0</code> is the <a href="https://en.wikipedia.org/wiki/Identity_element">identity element</a> for <strong>addition</strong> on the set of <a href="https://en.wikipedia.org/wiki/Real_number">Real numbers</a>. We can validate this theory by invoking <code>foldl</code> and <code>foldr</code> with <strong>addition</strong> and the same collection <code>[1,2,3]</code>:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldr</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>] <span class="op">==</span> <span class="fu">foldr</span> (<span class="op">+</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="dt">True</span></span></code></pre></div>
+<p>What would be the impact if <code>z</code> is not associative? The <strong>third duality theorem</strong> may have an answer.</p>
+<h2 id="third-duality-theorem">Third duality theorem</h2>
+<p>The <strong>third duality theorem</strong> for <strong>fold</strong> states that, for all finite lists <code>xs</code>:</p>
+<p>{% katex(block=true) %} f e xs =  ( f) e ( xs){% end %}</p>
+<p>where:</p>
+<p>{% katex(block=true) %} f x y = f y x{% end %}</p>
+<p>Let’s use again <strong>subtraction</strong> that is not associative to validate the relationship between <code>foldl()</code> and <code>foldr()</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="op">-</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="dv">6</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldr</span> (<span class="op">-</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>]</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="dv">2</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldl</span> (<span class="fu">flip</span>(<span class="op">-</span>)) <span class="dv">0</span> (<span class="fu">reverse</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="dv">2</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">foldr</span> (<span class="op">-</span>) <span class="dv">0</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>] <span class="op">==</span> <span class="fu">foldl</span> (<span class="fu">flip</span>(<span class="op">-</span>)) <span class="dv">0</span> (<span class="fu">reverse</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="dt">True</span></span></code></pre></div>
+<p>Despite that <strong>subtraction</strong> is not associative, when we apply <a href="https://zvon.org/other/haskell/Outputprelude/flip_f.html">flip()</a> to the function <code>(-)</code> and reverse the order of the argument list <code>xs</code>, when we invoke <code>foldl()</code>, we obtain the same result as invoking <code>foldr()</code> on the same arguments.</p>
+<p>Note that <code>flip()</code> evaluates the function by flipping the order of the arguments. For example, in Haskell, <code>(-) 2 1</code> is equivalent to <code>2 - 1</code>, whereas <code>flip(-) 2 1</code> is the same as <code>1 - 2</code>. We can validate these operations in the online Haskell REPL:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode hs"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (<span class="op">-</span>) <span class="dv">2</span> <span class="dv">1</span> <span class="op">==</span> <span class="dv">2</span> <span class="op">-</span> <span class="dv">1</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="dt">True</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> <span class="fu">flip</span>(<span class="op">-</span>) <span class="dv">2</span> <span class="dv">1</span> <span class="op">==</span> <span class="dv">1</span> <span class="op">-</span> <span class="dv">2</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="dt">True</span></span></code></pre></div>
+<p>These two theorems should help crafting a <code>foldr</code> function in Python.</p>
+<h1 id="fold-in-python">Fold in Python</h1>
+<p>Despite some past <a href="https://www.artima.com/weblogs/viewpost.jsp?thread=98196">resistance</a> from <a href="https://en.wikipedia.org/wiki/Guido_van_Rossum">Guido van Rossum</a>, Python 3 still has a <em>Fold</em> function. We can find it in the <code>functools</code> module, and it is named <a href="https://docs.python.org/3/library/functools.html#functools.reduce">reduce()</a>. The function <code>functools.reduce()</code> is implemented as a <strong>fold left</strong>.</p>
+<h2 id="foldl-in-python">foldl in Python</h2>
+<p>The signature of <code>functools.reduce()</code> is <code>reduce(function, sequence[, initial]) -&gt; value</code>. The parameter <code>initial</code> is optional and corresponds to the accumulator <code>z</code> of the Haskell <code>foldl()</code> and detailed in the previous section.</p>
+<p>As an exercise and to mimic Haskell, a <code>foldl</code> function can be written in Python as follows, with a <em>lambda</em>:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> functools</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> operator</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldl <span class="op">=</span> <span class="kw">lambda</span> func, acc, xs: functools.<span class="bu">reduce</span>(func, xs, acc)</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldl(operator.sub, <span class="dv">0</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="op">-</span><span class="dv">6</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldl(operator.add, <span class="st">&#39;L&#39;</span>, [<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>])</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co">&#39;L123&#39;</span></span></code></pre></div>
+<p>Note that subtraction and addition are supplied to <code>foldl()</code> with respectively <a href="https://docs.python.org/3/library/operator.html#operator.sub">operator.sub</a> and <a href="https://docs.python.org/3/library/operator.html#operator.add">operator.add</a>. Another option would be to use lambda functions. For example instead of using <code>operator.add</code> we could use <code>lambda x, y: x + y</code>.</p>
+<p>A more formal approach is to implement <code>foldl</code> as a function:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> functools</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> operator</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> foldl(func, acc, xs):</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> functools.<span class="bu">reduce</span>(func, xs, acc)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># tests</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(foldl(operator.sub, <span class="dv">0</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])) <span class="co"># -6</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(foldl(operator.add, <span class="st">&#39;L&#39;</span>, [<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>])) <span class="co"># &#39;L123&#39;</span></span></code></pre></div>
+<p>So far we have only wrapped <code>functools.reduce</code> to look like a <code>foldl</code>. Let’s see how it could work with <code>foldr</code>.</p>
+<h2 id="foldr-in-python">foldr in Python</h2>
+<p>Relying on the <strong>third duality theorem</strong> described in the <a href="/foldl-foldr-python/#third-duality-theorem">Laws of fold</a>, <code>foldr</code> can be crafted as a <em>lambda</em>:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> functools</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> operator</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldr <span class="op">=</span> <span class="kw">lambda</span> func, acc, xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: func(y, x), xs[::<span class="op">-</span><span class="dv">1</span>], acc)</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldr(operator.sub, <span class="dv">0</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="dv">2</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> foldr(operator.add, <span class="st">&#39;R&#39;</span>, [<span class="st">&#39;1&#39;</span>, <span class="st">&#39;2&#39;</span>, <span class="st">&#39;3&#39;</span>])</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co">&#39;123R&#39;</span></span></code></pre></div>
+<p>By applying the two rules of the <strong>third duality theorem</strong>, we respectively:</p>
+<ol type="1">
+<li><strong>Flipped</strong> the arguments of <code>f</code>: <code>lambda x, y: func(y, x)</code></li>
+<li><strong>Reversed</strong> the order of <code>zs</code>: <code>xs[::-1]</code></li>
+</ol>
+<p><strong>Notes</strong>: <code>xs[::-1]</code> is the Python idiomatic way to return the reverse of a list. Check this <a href="https://stackoverflow.com/a/3705676">answer from Alex Martelli on stackoverlow</a>. The other option, more readable, is to use the built-in <a href="https://docs.python.org/3.5/library/functions.html#reversed">reversed</a> function. In Python 2, <code>reduce()</code> was a built-in function.</p>
+<p>Lambdas implemented as above are not generally conducive to good code readability. The following code, although longer, might be more maintainable:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> functools</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> operator</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> flip(func):</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> newfunc(x, y):</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> func(y, x)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> newfunc</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> foldr(func, acc, xs):</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> functools.<span class="bu">reduce</span>(flip(func), <span class="bu">reversed</span>(xs), acc)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="co"># test</span></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(foldr(operator.sub, <span class="dv">0</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>])) <span class="co"># 2</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(foldr(operator.add, <span class="st">&#39;R&#39;</span>, [<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>])) <span class="co"># &#39;123R&#39;</span></span></code></pre></div>
+<p>To flip the arguments of <code>func</code>, we use the <code>flip()</code> function with a nested function <code>newfunc()</code> that returns a function flipping the arguments such that <code>x</code> becomes <code>y</code> and <code>y</code> is <code>x</code>.</p>
+<p><strong>Note</strong>: the <code>flip</code> function above is inspired from <a href="https://stackoverflow.com/a/9850282">Raymond Hettinger in a StackOverflow answer</a></p>
+<p>We now have new toy functions in Python, <code>foldl</code> and <code>foldr</code>. What can we do with those?</p>
+<h1 id="the-power-of-reduce-foldl">The Power of Reduce (foldl)</h1>
+<p>The folding concept opens the doors to build many other functions. It can be done without having to write explicit recursive code or managing loops. For example, <code>max</code>, <code>min</code>, <code>sum</code>, <code>prod</code>, <code>any</code>, <code>all</code>, <code>map</code>, <code>filter</code> among others, can all be expressed using <code>fold</code>.</p>
+<p>Here are some examples, using lambdas for conciseness:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> functools</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> <span class="im">import</span> operator</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmax <span class="op">=</span> <span class="kw">lambda</span> xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="cf">if</span> x <span class="op">&gt;</span> y <span class="cf">else</span> y, xs)</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmax([<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>])</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="dv">5</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmin <span class="op">=</span> <span class="kw">lambda</span> xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="cf">if</span> x <span class="op">&lt;</span> y <span class="cf">else</span> y, xs)</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmin([<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>])</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lsum <span class="op">=</span> <span class="kw">lambda</span> xs, <span class="op">/</span>, start<span class="op">=</span><span class="dv">0</span>: functools.<span class="bu">reduce</span>(operator.add, xs, start)</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lsum([<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>])</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a><span class="dv">15</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lprod <span class="op">=</span> <span class="kw">lambda</span> xs, <span class="op">/</span>, start<span class="op">=</span><span class="dv">1</span>: functools.<span class="bu">reduce</span>(operator.mul, xs, start)</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lprod([<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>])</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a><span class="dv">120</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lany <span class="op">=</span> <span class="kw">lambda</span> xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="kw">or</span> <span class="bu">bool</span>(y), xs, <span class="va">False</span>)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lany([[], [], []])</span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a><span class="va">False</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lany([<span class="st">&#39;&#39;</span>, <span class="st">&#39;guido&#39;</span>, <span class="st">&#39;&#39;</span>])</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="va">True</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lall <span class="op">=</span> <span class="kw">lambda</span> xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="kw">and</span> <span class="bu">bool</span>(y), xs, <span class="va">True</span>)</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lall([<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>])</span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a><span class="va">True</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lall([<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">2</span>])</span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a><span class="va">False</span></span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmap <span class="op">=</span> <span class="kw">lambda</span> func, xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="op">+</span> [func(y)], xs, [])</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lmap(<span class="kw">lambda</span> x: x <span class="op">+</span> <span class="dv">2</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>])</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a>[<span class="dv">3</span>, <span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">6</span>, <span class="dv">7</span>]</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lfilter <span class="op">=</span> <span class="kw">lambda</span> func, xs: functools.<span class="bu">reduce</span>(<span class="kw">lambda</span> x, y: x <span class="op">+</span> [y] <span class="cf">if</span> func(y) <span class="cf">else</span> x, xs, [])</span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;&gt;&gt;</span> lfilter(<span class="kw">lambda</span> x: x <span class="op">%</span> <span class="dv">2</span> <span class="op">==</span> <span class="dv">0</span>, <span class="bu">range</span>(<span class="dv">1</span>,<span class="dv">10</span>))</span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a>[<span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">6</span>, <span class="dv">8</span>]</span></code></pre></div>
+<p>All the examples have existing and more powerful implementations in Python. They are all <a href="https://docs.python.org/3/library/functions.html">built-in functions</a>, except for <a href="https://docs.python.org/3/library/math.html#math.prod">math.prod()</a> in the <code>math</code> module since Python 3.8. All of the functions above are relying on <code>reduce</code> (<code>foldl</code>) and none are taking advantage of <code>foldr</code>.</p>
+<h1 id="more-examples-with-foldr-and-foldl">More Examples with foldr and foldl</h1>
+<div class="sourceCode" id="cb18"><pre class="sourceCode lisp"><code class="sourceCode commonlisp"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (foldr <span class="kw">cons</span> &#39;(<span class="dv">4</span>) &#39;(<span class="dv">1</span> <span class="dv">2</span> <span class="dv">3</span>))</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>&#39;(<span class="dv">1</span> <span class="dv">2</span> <span class="dv">3</span> <span class="dv">4</span>)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (<span class="kw">cons</span> &#39;<span class="dv">1</span> (<span class="kw">cons</span> &#39;<span class="dv">2</span> (<span class="kw">cons</span> &#39;<span class="dv">3</span> &#39;(<span class="dv">4</span>))))</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>&#39;(<span class="dv">1</span> <span class="dv">2</span> <span class="dv">3</span> <span class="dv">4</span>)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (foldl <span class="kw">cons</span> &#39;(<span class="dv">4</span>) &#39;(<span class="dv">1</span> <span class="dv">2</span> <span class="dv">3</span>))</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>&#39;(<span class="dv">3</span> <span class="dv">2</span> <span class="dv">1</span> <span class="dv">4</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> (<span class="kw">cons</span> &#39;<span class="dv">3</span> (<span class="kw">cons</span> &#39;<span class="dv">2</span> (<span class="kw">cons</span> &#39;<span class="dv">1</span> &#39;(<span class="dv">4</span>))))</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>&#39;(<span class="dv">3</span> <span class="dv">2</span> <span class="dv">1</span> <span class="dv">4</span>)</span></code></pre></div>
+<h1 id="example-with-foldr">Example with Foldr</h1>
+<p>Here is a scenario that demonstrates a possible usage of <code>foldl</code> and <code>foldr</code> in Python. Peter Drake presents this construct in his <a href="https://youtu.be/1IjBT9TSTyQ">Lambdas and folds Youtube video</a>. Imagine that, given a list, we need to identify the last and/or the first element that satisfies a certain predicate. This could be written as follows:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> functools</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> foldl(func, acc, xs):</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> functools.<span class="bu">reduce</span>(func, xs, acc)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> flip(func):</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> newfunc(x, y):</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> func(y, x)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> newfunc</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> foldr(func, acc, xs):</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> functools.<span class="bu">reduce</span>(flip(func), <span class="bu">reversed</span>(xs), acc)</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> first(func, acc, xs):</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> foldr(<span class="kw">lambda</span> x, y: x <span class="cf">if</span> func(x) <span class="cf">else</span> y, acc, xs)</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> last(func, acc, xs):</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> foldl(<span class="kw">lambda</span> x, y: y <span class="cf">if</span> func(y) <span class="cf">else</span> x, acc, xs)</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(last(<span class="kw">lambda</span> x: x<span class="op">&lt;</span><span class="dv">8</span>, <span class="va">None</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]))   <span class="co"># =&gt; 7</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(first(<span class="kw">lambda</span> x: x<span class="op">&gt;</span><span class="dv">3</span>, <span class="va">None</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]))  <span class="co"># =&gt; 4</span></span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(first(<span class="kw">lambda</span> x: x<span class="op">&gt;</span><span class="dv">20</span>, <span class="va">None</span>, [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>])) <span class="co"># =&gt; None</span></span></code></pre></div>
+<p><code>first</code> and <code>last</code> don’t require any loop or explicit recursion. <code>first</code> uses <code>foldr</code> taking advantage of the <em>right folding</em> whereas <code>last</code> relies on <code>foldl</code>.</p>
+<h2 id="how-does-first-work">How does first work?</h2>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>predicate (example: element less than <span class="dv">8</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>z <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>xs <span class="op">=</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>foldl:</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> f <span class="op">=</span>  <span class="kw">lambda</span> x: x<span class="op">&lt;</span><span class="dv">8</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> z <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> xs <span class="op">=</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>first element (x: <span class="va">None</span>, y: <span class="dv">1</span>)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="kw">lambda</span> x, y: x <span class="cf">if</span> x <span class="op">&lt;</span> <span class="dv">8</span> <span class="kw">or</span> z</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> x <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>second element z <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> x <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">8</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> z <span class="op">=</span> <span class="dv">7</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">9</span></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> z <span class="op">=</span> <span class="dv">7</span></span></code></pre></div>
+<h2 id="how-does-last-work">How does last work?</h2>
+<div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>predicate (example: element greater than <span class="dv">8</span>)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>z <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>xs <span class="op">=</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>foldf:</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> f <span class="op">=</span>  <span class="kw">lambda</span> x: x<span class="op">&gt;</span><span class="dv">8</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> z <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="op">*</span> xs <span class="op">=</span> [<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>,<span class="dv">5</span>,<span class="dv">6</span>,<span class="dv">7</span>,<span class="dv">8</span>,<span class="dv">9</span>]</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>first element (x: <span class="va">None</span>, y: <span class="dv">1</span>)</span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="kw">lambda</span> x, y: x <span class="cf">if</span> x <span class="op">&lt;</span> <span class="dv">8</span> <span class="kw">or</span> z</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> x <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>second element z <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> x <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">8</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> z <span class="op">=</span> <span class="dv">7</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>x <span class="op">=</span> <span class="dv">9</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>now z <span class="op">=</span> z <span class="op">=</span> <span class="dv">7</span></span></code></pre></div>
+<h1 id="conclusion">Conclusion</h1>
+<p>In this era of the rediscovery of functional programming, there is much more to explore and to apply to languages that are not inherently functional. Arguably, from a pragmatic perspective, there may be little we need that is not already provided in the current versions of Python and that would require some sophisticated folding mechanisms. Furthermore, other higher-order functions flagships along with <code>fold</code>, like <code>map</code> and <code>filter</code>, can be expressed in Python with elegant <em>list comprehensions</em> and <em>generator expressions</em>, but this should be the subject of a different article.</p>
+<h1 id="updates">Updates</h1>
+<ul>
+<li><strong>03/12/2021</strong>:
+<ul>
+<li>Removed Python 2 references</li>
+</ul></li>
+<li><strong>08/28/2016</strong>
+<ul>
+<li>Initial publication of this article.</li>
+</ul></li>
+</ul>
+<section class="footnotes" role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1" role="doc-endnote"><p>THIS SUCKS.<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>

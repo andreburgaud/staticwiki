@@ -20,13 +20,13 @@ $ deactivate
 * `markdown-it-py`
 * PyPI: https://pypi.org/project/markdown-it-py/
 * GitHub: https://github.com/executablebooks/markdown-it-py
-* Documentation: https://markdown-it-py.readthedocs.io/en/latest/
+* Documentation: https://pypi.org/project/markdown-it-py/
 * CommonMark Spec: https://spec.commonmark.org/0.30/
 * `mdit-py-plugins`: https://mdit-py-plugins.readthedocs.io/en/latest/
   * Footnotes
   * Front-Matter
   * Word-count
-  * Math
+  * Math ???
 * `linkify-it-py`: allows to write raw URL in Markdown that will be properly wrapped up in the resulting HTML.
 
 **Note**: The package `mdit-py-plugins` requires `markdown-it-py` so `markdown-it-py` does not show up in the top-level package requirements when running `pip-chill`. Installing `mdit-py-plugins` automatically installs `markdown-it-py`

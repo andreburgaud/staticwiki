@@ -1,5 +1,4 @@
 from markdown_it import MarkdownIt
-from mdit_py_plugins.dollarmath import dollarmath_plugin
 from mdit_py_plugins.footnote import footnote_plugin
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -39,7 +38,7 @@ md = MarkdownIt("commonmark", {"linkify": True, # Autoconvert URL-like texts to 
                                "html": True, # Enable HTML tags in source
                                "breaks": False, # Convert '\n' in paragraphs into <br>
                                "highlight": highlight_code
-                               }).use(dollarmath_plugin).use(footnote_plugin)
+                               }).use(footnote_plugin)
 
 md.enable([
     "linkify",

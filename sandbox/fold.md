@@ -6,19 +6,23 @@ This article is a [Python](https://www.python.org/) article, but some of the ini
 
 # Fold
 
-[Fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function)) regroups a family of [higher-order functions](https://en.wikipedia.org/wiki/Higher-order_function) in [functional programming](https://en.wikipedia.org/wiki/Functional_programming). At a high level, *folding* allows to deconstruct or reduce data. A typical signature for a generic **fold** function is the following:
+[Fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function)) regroups a family of [higher-order functions](https://en.wikipedia.org/wiki/Higher-order_function) in [functional programming](https://en.wikipedia.org/wiki/Functional_programming). At a high level, *folding* allows to deconstruct or reduce data. A typical signature for a generic **fold** function is the following $a=b=c$ :
 
-{% katex(block=true) %}\text{fold}\ f\ z\ xs{% end %}
 
+<div>
 $$
 \text{fold}\ f\ z\ xs
 $$
+</div>
 
+Really!!
 
+<div>
 $$
-a=1
+a=1 \\
 b=2
 $$
+</div>
 
 [^1]
 
@@ -66,9 +70,9 @@ Fold functions come in different kinds, the two main linear ones are `foldl` and
 
 {% katex(block=true) %}\text{foldl}\ f\ z\ xs{% end %}
 
-The **fold left** function performs the operations on the elements of the list `xs`, starting from the left. If we substitute `f` with **addition** `(+)`, `z` with value `0`, and `xs` with `[1,2,3]`, the step-by-step operations execute as follows:
+The **fold left** function performs the operations on the elements of the list `xs`, starting from the left. If we substitute `f` with **addition** `(+)`, `z` with value `0`, and `xs` with `[1,2,3]`, the step-by-step operations execute as follows $a == b$:
 
-{% katex(block=true) %}
+$$
 \begin{split}
 &\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
 &\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
@@ -76,7 +80,7 @@ The **fold left** function performs the operations on the elements of the list `
 &\implies \text{foldl}\ (+)\ 6\ [] \\
 &\implies 6
 \end{split}
-{% end %}
+$$
 
 
 $$
@@ -88,6 +92,18 @@ $$
 &\implies 6
 \end{split}
 $$
+
+## KATEX
+
+<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable rowspacing="0.2500em" columnalign="right left" columnspacing="0em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mtext>foldl </mtext><mo stretchy="false">(</mo><mo>+</mo><mo stretchy="false">)</mo><mtext> </mtext><mn>0</mn><mtext> </mtext><mo stretchy="false">[</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">]</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mtext>  </mtext><mo>⟹</mo><mtext>  </mtext><mtext>foldl </mtext><mo stretchy="false">(</mo><mo>+</mo><mo stretchy="false">)</mo><mtext> </mtext><mn>1</mn><mtext> </mtext><mo stretchy="false">[</mo><mn>2</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">]</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mtext>  </mtext><mo>⟹</mo><mtext>  </mtext><mtext>foldl </mtext><mo stretchy="false">(</mo><mo>+</mo><mo stretchy="false">)</mo><mtext> </mtext><mn>3</mn><mtext> </mtext><mo stretchy="false">[</mo><mn>3</mn><mo stretchy="false">]</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mtext>  </mtext><mo>⟹</mo><mtext>  </mtext><mtext>foldl </mtext><mo stretchy="false">(</mo><mo>+</mo><mo stretchy="false">)</mo><mtext> </mtext><mn>6</mn><mtext> </mtext><mo stretchy="false">[</mo><mo stretchy="false">]</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mtext>  </mtext><mo>⟹</mo><mtext>  </mtext><mn>6</mn></mrow></mstyle></mtd></mtr></mtable><annotation encoding="application/x-tex">\begin{split}
+&amp;\text{foldl}\ (+)\ 0\ [1, 2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 1\ [2, 3] \\
+&amp;\implies \text{foldl}\ (+)\ 3\ [ 3 ] \\
+&amp;\implies \text{foldl}\ (+)\ 6\ [] \\
+&amp;\implies 6
+\end{split}
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:7.500000000000002em;vertical-align:-3.5000000000000018em;"></span><span class="mord"><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:4em;"><span style="top:-6em;"><span class="pstrut" style="height:2.84em;"></span><span class="mord"></span></span><span style="top:-4.499999999999999em;"><span class="pstrut" style="height:2.84em;"></span><span class="mord"></span></span><span style="top:-2.9999999999999982em;"><span class="pstrut" style="height:2.84em;"></span><span class="mord"></span></span><span style="top:-1.4999999999999982em;"><span class="pstrut" style="height:2.84em;"></span><span class="mord"></span></span><span style="top:1.7763568394002505e-15em;"><span class="pstrut" style="height:2.84em;"></span><span class="mord"></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:3.5000000000000018em;"><span></span></span></span></span></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:4em;"><span style="top:-6.16em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mord text"><span class="mord">foldl</span></span><span class="mspace"> </span><span class="mopen">(</span><span class="mord">+</span><span class="mclose">)</span><span class="mspace"> </span><span class="mord">0</span><span class="mspace"> </span><span class="mopen">[</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">3</span><span class="mclose">]</span></span></span><span style="top:-4.659999999999999em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord text"><span class="mord">foldl</span></span><span class="mspace"> </span><span class="mopen">(</span><span class="mord">+</span><span class="mclose">)</span><span class="mspace"> </span><span class="mord">1</span><span class="mspace"> </span><span class="mopen">[</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">3</span><span class="mclose">]</span></span></span><span style="top:-3.1599999999999984em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord text"><span class="mord">foldl</span></span><span class="mspace"> </span><span class="mopen">(</span><span class="mord">+</span><span class="mclose">)</span><span class="mspace"> </span><span class="mord">3</span><span class="mspace"> </span><span class="mopen">[</span><span class="mord">3</span><span class="mclose">]</span></span></span><span style="top:-1.6599999999999984em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord text"><span class="mord">foldl</span></span><span class="mspace"> </span><span class="mopen">(</span><span class="mord">+</span><span class="mclose">)</span><span class="mspace"> </span><span class="mord">6</span><span class="mspace"> </span><span class="mopen">[</span><span class="mclose">]</span></span></span><span style="top:-0.15999999999999837em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">⟹</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord">6</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:3.5000000000000018em;"><span></span></span></span></span></span></span></span></span></span></span></span>
+
 
 The intermediary steps can be reduced into the following one-liner:
 

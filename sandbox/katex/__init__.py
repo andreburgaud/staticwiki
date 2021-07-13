@@ -1,0 +1,1 @@
+from .index import katex_plugin  # noqa F401
